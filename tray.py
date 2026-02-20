@@ -17,6 +17,14 @@ def exit_app(icon, item):
     icon.stop()
     os._exit(0)
 
+def get_resource_path():
+    """获取打包资源的路径"""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller --onefile 运行时，打包的静态文件会被放在 sys._MEIPASS 临时文件夹
+        return sys._MEIPASS
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
+
 def get_lan_ip():
     """获取局域网 IP 地址"""
     try:
@@ -31,17 +39,27 @@ def get_lan_ip():
 def show_qr():
     """在弹窗显示二维码"""
     lan_ip = get_lan_ip()
-    url = f"http://{lan_ip}:5000"
+    url = f"HTTP://{lan_ip}:5000"
+    
 
     # 生成二维码
     qr = qrcode.QRCode(box_size=10, border=4)
-    qr.add_data(url)
+    qr.add_data(url.lower())
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
 
     # 弹窗显示
     window = tk.Tk()
     window.title("访问二维码")
+    
+    # 设置窗口图标
+    icon_path = os.path.join(get_resource_path(), "static", "favicon.ico")
+    try:
+        if os.path.exists(icon_path):
+            window.iconbitmap(icon_path)
+    except Exception as e:
+        print("设置窗口图标失败:", e)
+
     window.resizable(False, False)
     img_tk = ImageTk.PhotoImage(img)
     label = tk.Label(window, image=img_tk)
@@ -50,12 +68,7 @@ def show_qr():
     window.mainloop()
 
 def tray():
-    if getattr(sys, 'frozen', False):
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    icon_path = os.path.join(base_dir, "static", "favicon.png")
+    icon_path = os.path.join(get_resource_path(), "static", "favicon.ico")
     
     try:
         image = Image.open(icon_path)

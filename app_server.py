@@ -8,7 +8,19 @@ from PIL import Image, ImageGrab
 import qrcode
 import socket
 import sys
+import logging
 from dotenv import load_dotenv
+
+# 构建伪装的空写入器，防止底层框架调用的硬编码 print
+class NullWriter:
+    def write(self, *args, **kwargs): pass
+    def flush(self, *args, **kwargs): pass
+    def isatty(self): return False
+
+if sys.stdout is None:
+    sys.stdout = NullWriter()
+if sys.stderr is None:
+    sys.stderr = NullWriter()
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -431,7 +443,25 @@ login_template = """<!doctype html>
 def main():
     lan_ip = get_lan_ip()
     url = f"http://{lan_ip}:5000"
-    print(f"📌 服务已启动，局域网访问地址: {url}")
-    print_qr(url)
+    
+    # 从源头切断 Flask 内置模块往命令行里写入访问日志和 Banner 警告！
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+    
+    # 强制禁用默认 Banner 打印 (WARNING: This is a development server)
+    try:
+        from flask import cli
+        cli.show_server_banner = lambda *args: None
+    except Exception:
+        pass
+    
+    # 如果没被打包（比如直接运行 PY 代码），则还能在控制台中看到二维码
+    if not getattr(sys, 'frozen', False):
+        print(f"📌 服务已启动，局域网访问地址: {url}")
+        try:
+            print_qr(url)
+        except Exception:
+            pass
+
     app.run(host="0.0.0.0", port=5000)    
 

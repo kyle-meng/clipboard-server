@@ -31,7 +31,7 @@ def get_lan_ip():
 def show_qr():
     """在弹窗显示二维码"""
     lan_ip = get_lan_ip()
-    url = f"HTTP://{lan_ip}:5000"
+    url = f"http://{lan_ip}:5000"
 
     # 生成二维码
     qr = qrcode.QRCode(box_size=10, border=4)
@@ -50,12 +50,23 @@ def show_qr():
     window.mainloop()
 
 def tray():
-    image = Image.open("static\\favicon.png")
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    icon_path = os.path.join(base_dir, "static", "favicon.png")
+    
+    try:
+        image = Image.open(icon_path)
+    except FileNotFoundError:
+        # Fallback if image not found to avoid crash
+        image = Image.new('RGB', (64, 64), color=(73, 109, 137))
+
     menu = Menu(
         MenuItem("展示访问二维码", show_qr),
         MenuItem("退出服务", exit_app)
     )
-
 
     icon = Icon("Clipboard Server", image, "局域网剪贴板", menu)
     threading.Thread(target=start_server, daemon=True).start()

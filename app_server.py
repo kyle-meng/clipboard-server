@@ -7,6 +7,19 @@ from PIL import Image, ImageGrab
 # import base64
 import qrcode
 import socket
+import sys
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+DATA_DIR = os.path.join(BASE_DIR, "clipboard_data")
+FILES_DIR = os.path.join(DATA_DIR, "files")
+IMAGES_DIR = os.path.join(DATA_DIR, "images")
+
+os.makedirs(FILES_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
 
 def get_lan_ip():
     """获取局域网 IP 地址"""
@@ -41,26 +54,24 @@ def save_clipboard_image():
         image = ImageGrab.grabclipboard()
         if isinstance(image, Image.Image):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"clipboard_data/images/img_{timestamp}.png"
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
-            image.save(filename, "PNG")
+            filename = f"img_{timestamp}.png"
+            filepath = os.path.join(IMAGES_DIR, filename)
+            image.save(filepath, "PNG")
             return filename
     except Exception as e:
         print("未检测到剪贴板图像或读取失败:", e)
     return None
 
 def get_image_history():
-    folder = 'clipboard_data/images'
-    if not os.path.exists(folder):
+    if not os.path.exists(IMAGES_DIR):
         return []
-    files = sorted(os.listdir(folder))[-5:]
-    return [{'time': f, 'src': f'/images/{f}'} for f in files]
+    files = sorted(os.listdir(IMAGES_DIR))[-5:]
+    return [{'time': f, 'src': url_for('serve_image', filename=f)} for f in files]
 
 def get_file_list():
-    folder = "clipboard_data/files"
-    if not os.path.exists(folder):
+    if not os.path.exists(FILES_DIR):
         return []
-    return sorted(os.listdir(folder))
+    return sorted(os.listdir(FILES_DIR))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -125,20 +136,20 @@ def api_set_clipboard():
 
 @app.route("/upload_file", methods=["POST"])
 def upload_file():
-    uploaded_file = request.files["file"]
-    if uploaded_file.filename != '':
-        save_path = os.path.join("clipboard_data/files", uploaded_file.filename)
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    uploaded_file = request.files.get("file")
+    if uploaded_file and uploaded_file.filename != '':
+        filename = uploaded_file.filename.replace('\\', '/').split('/')[-1]
+        save_path = os.path.join(FILES_DIR, filename)
         uploaded_file.save(save_path)
     return redirect(url_for('index'))
 
 @app.route('/files/<filename>')
 def serve_file(filename):
-    return send_from_directory('clipboard_data/files', filename)
+    return send_from_directory(FILES_DIR, filename)
 
 @app.route('/images/<filename>')
 def serve_image(filename):
-    return send_from_directory('clipboard_data/images', filename)
+    return send_from_directory(IMAGES_DIR, filename)
 
 html_template = """<!doctype html>
 <html><head><meta charset="utf-8"><title>局域网剪贴板</title>
@@ -180,7 +191,7 @@ input[type=submit] { padding: 0.5rem 1rem; font-size: 1em; margin-top: 0.5rem; }
 <h3>📂 文件列表</h3>
 <ul>
 {% for file in file_list %}
-<li><a href="/files/{{ file }}">{{ file }}</a></li>
+<li><a href="{{ url_for('serve_file', filename=file) }}">{{ file }}</a></li>
 {% endfor %}
 </ul>
 

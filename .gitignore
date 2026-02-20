@@ -20,3 +20,10 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+*build/*
+*dist/*
+*venv/*
+*__pycache__/*
+*.spec
+*clipboard_data/*
+*txt/*

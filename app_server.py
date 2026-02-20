@@ -8,11 +8,14 @@ from PIL import Image, ImageGrab
 import qrcode
 import socket
 import sys
+from dotenv import load_dotenv
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 DATA_DIR = os.path.join(BASE_DIR, "clipboard_data")
 FILES_DIR = os.path.join(DATA_DIR, "files")
@@ -42,9 +45,12 @@ def print_qr(url):
 
 
 app = Flask(__name__)
-app.secret_key = 'your_super_secret_key'
-PASSWORD = '123211'
-MAX_HISTORY = 20
+app.secret_key = os.getenv('SECRET_KEY', 'your_super_secret_key')
+PASSWORD = os.getenv('PASSWORD', '123456')
+try:
+    MAX_HISTORY = int(os.getenv('MAX_HISTORY', 20))
+except ValueError:
+    MAX_HISTORY = 20
 
 clipboard_content = ""
 clipboard_history = []
@@ -421,20 +427,11 @@ login_template = """<!doctype html>
 </body>
 </html>"""
 
-# if __name__ == "__main__":
-#     print("启动 Flask 服务中…")
-#     app.run(host="localhost", port=6000)
+
 def main():
     lan_ip = get_lan_ip()
     url = f"http://{lan_ip}:5000"
     print(f"📌 服务已启动，局域网访问地址: {url}")
     print_qr(url)
     app.run(host="0.0.0.0", port=5000)    
-# if __name__ == "__main__":
-#     lan_ip = get_lan_ip()
-#     url = f"http://{lan_ip}:5000"
-#     print(f"📌 服务已启动，局域网访问地址: {url}")
-#     print_qr(url)
-#     app.run(host="0.0.0.0", port=5000)
 
-# main()
